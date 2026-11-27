@@ -5,6 +5,7 @@ class ReporteModel {
   final String foto;
   final double latitud;
   final double longitud;
+  final String direccion;
   final DateTime fecha;
   final String estado;
 
@@ -15,6 +16,7 @@ class ReporteModel {
     required this.latitud,
     required this.longitud,
     required this.fecha,
+    this.direccion = 'Dirección no disponible',
     this.estado = 'Pendiente',
   });
 
@@ -25,6 +27,7 @@ class ReporteModel {
       'foto': foto,
       'latitud': latitud,
       'longitud': longitud,
+      'direccion': direccion,
       'fecha': fecha.toIso8601String(),
       'estado': estado,
     };
@@ -37,6 +40,7 @@ class ReporteModel {
       foto: json['foto'],
       latitud: (json['latitud'] as num).toDouble(),
       longitud: (json['longitud'] as num).toDouble(),
+      direccion: json['direccion'] ?? 'Dirección no disponible',
       fecha: DateTime.parse(json['fecha']),
       estado: json['estado'] ?? 'Pendiente',
     );

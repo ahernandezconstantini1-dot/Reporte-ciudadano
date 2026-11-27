@@ -1,211 +1,86 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/reporte_model.dart';
-import '../providers/reporte_provider.dart';
-import '../services/ubicacion_service.dart';
-import '../services/camara_service.dart';
 
-class RegistroScreen extends StatefulWidget {
-  const RegistroScreen({super.key});
+class ReporteCard extends StatefulWidget {
+  final ReporteModel reporte;
+  final VoidCallback onTap;
+
+  const ReporteCard({
+    super.key,
+    required this.reporte,
+    required this.onTap,
+  });
 
   @override
-  State<RegistroScreen> createState() => _RegistroScreenState();
+  State<ReporteCard> createState() => _ReporteCardState();
 }
 
-class _RegistroScreenState extends State<RegistroScreen> {
-  final TextEditingController _tipoController = TextEditingController();
-  final TextEditingController _descripcionController = TextEditingController();
-
-  final UbicacionService _ubicacionService = UbicacionService();
-  final CamaraService _camaraService = CamaraService();
-
-  String _foto = '';
-  double _latitud = 0;
-  double _longitud = 0;
-  String _mensaje = '';
-  bool _cargando = false;
-
-  Future<void> _obtenerUbicacion() async {
-    try {
-      final posicion = await _ubicacionService.obtenerUbicacion();
-      if (!mounted) return;
-
-      setState(() {
-        _latitud = posicion.latitude;
-        _longitud = posicion.longitude;
-        _mensaje = 'Ubicación obtenida correctamente';
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _mensaje = 'Error al obtener ubicación: $e';
-      });
-    }
-  }
-
-  Future<void> _tomarFoto() async {
-    try {
-      final foto = await _camaraService.tomarFoto();
-      if (!mounted) return;
-
-      if (foto != null) {
-        setState(() {
-          _foto = foto;
-          _mensaje = 'Fotografía guardada';
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _mensaje = 'Error al tomar fotografía: $e';
-      });
-    }
-  }
-
-  Future<void> _guardarReporte() async {
-    if (_tipoController.text.trim().isEmpty ||
-        _descripcionController.text.trim().isEmpty ||
-        _foto.isEmpty ||
-        (_latitud == 0 && _longitud == 0)) {
-      setState(() {
-        _mensaje = 'Completa los campos, fotografía y ubicación';
-      });
-      return;
-    }
-
-    setState(() {
-      _cargando = true;
-      _mensaje = '';
-    });
-
-    try {
-      final reporte = ReporteModel(
-        tipo: _tipoController.text.trim(),
-        descripcion: _descripcionController.text.trim(),
-        foto: _foto,
-        latitud: _latitud,
-        longitud: _longitud,
-        fecha: DateTime.now(),
-      );
-
-      await context.read<ReporteProvider>().agregarReporte(reporte);
-      if (!mounted) return;
-
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _mensaje = 'Error al guardar el reporte: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _cargando = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _tipoController.dispose();
-    _descripcionController.dispose();
-    super.dispose();
-  }
+class _ReporteCardState extends State<ReporteCard> {
+  bool _seleccionado = false;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nuevo reporte'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _seleccionado = !_seleccionado;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(_seleccionado ? 15 : 8),
+        decoration: BoxDecoration(
+          color: _seleccionado ? Colors.blue[50] : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _seleccionado ? Colors.blue : Colors.grey.shade300,
+          ),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Registrar incidencia',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+            Stack(
+              children: [
+                if (widget.reporte.foto.isNotEmpty)
+                  Image.file(
+                    File(widget.reporte.foto),
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  )
+                else
+                  Container(
+                    height: 160,
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Icon(Icons.image, size: 50),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.black54,
+                    child: Text(
+                      widget.reporte.tipo,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-
-            TextField(
-              controller: _tipoController,
-              decoration: const InputDecoration(
-                labelText: 'Tipo de incidencia',
-                hintText: 'Ejemplo: Bache',
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            TextField(
-              controller: _descripcionController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                hintText: 'Describe el problema',
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton.icon(
-              onPressed: _obtenerUbicacion,
-              icon: const Icon(Icons.location_on),
-              label: const Text('Obtener ubicación GPS'),
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              'Latitud: $_latitud\nLongitud: $_longitud',
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton.icon(
-              onPressed: _tomarFoto,
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Tomar fotografía'),
-            ),
-
-            const SizedBox(height: 15),
-
-            if (_foto.isNotEmpty)
-              Image.file(
-                File(_foto),
-                height: 180,
-                fit: BoxFit.cover,
-              ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: _cargando ? null : _guardarReporte,
-              child: const Text('Guardar reporte'),
-            ),
-
-            const SizedBox(height: 15),
-
-            if (_cargando)
-              const Center(child: CircularProgressIndicator()),
-
-            Text(
-              _mensaje,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.blue),
+            ListTile(
+              title: Text(widget.reporte.descripcion),
+              subtitle: Text('Estado: ${widget.reporte.estado}'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: widget.onTap,
             ),
           ],
         ),

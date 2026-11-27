@@ -6,6 +6,7 @@ import '../models/reporte_model.dart';
 import '../providers/reporte_provider.dart';
 import '../services/ubicacion_service.dart';
 import '../services/camara_service.dart';
+import '../services/direccion_service.dart';
 
 class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key});
@@ -20,33 +21,66 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
   final UbicacionService _ubicacionService = UbicacionService();
   final CamaraService _camaraService = CamaraService();
+  final DireccionService _direccionService = DireccionService();
 
   String _foto = '';
   double _latitud = 0;
   double _longitud = 0;
+  String _direccion = 'Dirección no disponible';
   String _mensaje = '';
   bool _cargando = false;
+  bool _obteniendoUbicacion = false;
+  bool _ubicacionObtenida = false;
 
   Future<void> _obtenerUbicacion() async {
+    setState(() {
+      _obteniendoUbicacion = true;
+      _ubicacionObtenida = false;
+      _mensaje = 'Obteniendo ubicación...';
+    });
+
     try {
+      // Obtener las coordenadas GPS
       final posicion = await _ubicacionService.obtenerUbicacion();
       if (!mounted) return;
 
       setState(() {
         _latitud = posicion.latitude;
         _longitud = posicion.longitude;
+        _ubicacionObtenida = true;
+        _direccion = 'Consultando dirección...';
         _mensaje = 'Ubicación obtenida correctamente';
+      });
+
+      // Consultar la dirección mediante la API REST
+      final direccion = await _direccionService.obtenerDireccion(
+        posicion.latitude,
+        posicion.longitude,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _direccion = direccion;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _mensaje = 'Error al obtener ubicación: $e';
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _obteniendoUbicacion = false;
+        });
+      }
     }
   }
 
   Future<void> _tomarFoto() async {
     try {
+      // Tomar y guardar la fotografía
       final foto = await _camaraService.tomarFoto();
       if (!mounted) return;
 
@@ -58,6 +92,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _mensaje = 'Error al tomar fotografía: $e';
       });
@@ -68,7 +103,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (_tipoController.text.trim().isEmpty ||
         _descripcionController.text.trim().isEmpty ||
         _foto.isEmpty ||
-        (_latitud == 0 && _longitud == 0)) {
+        !_ubicacionObtenida) {
       setState(() {
         _mensaje = 'Completa los campos, fotografía y ubicación';
       });
@@ -87,6 +122,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         foto: _foto,
         latitud: _latitud,
         longitud: _longitud,
+        direccion: _direccion,
         fecha: DateTime.now(),
       );
 
@@ -96,6 +132,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _mensaje = 'Error al guardar el reporte: $e';
       });
@@ -135,6 +172,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 20),
 
             TextField(
@@ -161,17 +199,31 @@ class _RegistroScreenState extends State<RegistroScreen> {
             const SizedBox(height: 20),
 
             ElevatedButton.icon(
-              onPressed: _obtenerUbicacion,
+              onPressed: _obteniendoUbicacion ? null : _obtenerUbicacion,
               icon: const Icon(Icons.location_on),
               label: const Text('Obtener ubicación GPS'),
             ),
 
             const SizedBox(height: 10),
 
-            Text(
-              'Latitud: $_latitud\nLongitud: $_longitud',
-              textAlign: TextAlign.center,
-            ),
+            if (_obteniendoUbicacion)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+
+            if (_ubicacionObtenida) ...[
+              Text(
+                'Latitud: $_latitud\nLongitud: $_longitud',
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                'Dirección: $_direccion',
+                textAlign: TextAlign.center,
+              ),
+            ],
 
             const SizedBox(height: 20),
 
@@ -193,14 +245,18 @@ class _RegistroScreenState extends State<RegistroScreen> {
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: _cargando ? null : _guardarReporte,
+              onPressed: (_cargando || _obteniendoUbicacion)
+                  ? null
+                  : _guardarReporte,
               child: const Text('Guardar reporte'),
             ),
 
             const SizedBox(height: 15),
 
             if (_cargando)
-              const Center(child: CircularProgressIndicator()),
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
 
             Text(
               _mensaje,

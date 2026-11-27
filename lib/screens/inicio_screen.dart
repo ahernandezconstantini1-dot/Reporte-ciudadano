@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/reporte_provider.dart';
+import '../widgets/reporte_card.dart';
 
 class InicioScreen extends StatelessWidget {
   const InicioScreen({super.key});
@@ -30,24 +31,15 @@ class InicioScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final reporte = reporteProvider.reportes[index];
 
-                return Card(
-                  margin: const EdgeInsets.all(10),
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.report_problem,
-                      color: Colors.orange,
-                    ),
-                    title: Text(reporte.tipo),
-                    subtitle: Text(reporte.descripcion),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/detalle',
-                        arguments: reporte,
-                      );
-                    },
-                  ),
+                return ReporteCard(
+                  reporte: reporte,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/detalle',
+                      arguments: reporte,
+                    );
+                  },
                 );
               },
             ),

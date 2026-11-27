@@ -32,7 +32,6 @@ class DetalleScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Fotografía del reporte
             if (reporte.foto.isNotEmpty)
               Image.file(
                 File(reporte.foto),
@@ -69,8 +68,17 @@ class DetalleScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 16),
             ),
 
+            const SizedBox(height: 10),
+
             Text(
               'Longitud: ${reporte.longitud}',
+              style: const TextStyle(fontSize: 16),
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              'Dirección: ${reporte.direccion}',
               style: const TextStyle(fontSize: 16),
             ),
 
